@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #000;
+      overflow: hidden;
+    }
+    #video {
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+
+  <video id="video" controls autoplay muted playsinline></video>
+
+  <script>
+    function getUrlParameter(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    const url = decodeURIComponent(getUrlParameter('url'));
+    const video = document.getElementById('video');
+
+    // Ensure the video is muted and plays inline for autoplay compatibility
+    video.muted = true;
+    video.playsInline = true;
+
+    // Detect if the browser is iOS Safari
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (isIOS && video.canPlayType('application/vnd.apple.mpegurl')) {
+      // For iOS Safari, set the src directly to use native HLS support
+      video.src = url;
+      video.addEventListener('loadedmetadata', function () {
+        video.play();
+      });
+      
+      // Add a touchstart event in case autoplay fails and needs user interaction
+      video.addEventListener('touchstart', () => {
+        video.play();
+      });
+    } else if (Hls.isSupported()) {
+      // For other browsers, use Hls.js
+      const hls = new Hls();
+      hls.loadSource(url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        video.play();
+      });
+    } else {
+      console.error("This browser does not support HLS playback.");
+    }
+  </script>
+</body>
+<noscript>
+  <div style="color: white; text-align: center; padding: 20px;">
+    This site requires JavaScript to play the video. Please enable JavaScript in your browser settings.
+  </div>
+</noscript>
+</html>
