@@ -1,105 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <link href="https://vjs.zencdn.net/8.16.1/video-js.css" rel="stylesheet" />
-
-  <!-- Include Video.js -->
-  <script src="https://cdn.jsdelivr.net/npm/video.js@8.16.1/dist/video.min.js"></script>
-  <!-- Include Video.js HTTP Streaming (HLS support) -->
-  <script src="https://cdn.jsdelivr.net/npm/videojs-http-streaming@2.9.0/dist/videojs-http-streaming.min.js"></script>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
-    /* Make the video player fill the viewport */
-    html, body {
+    body, html {
       margin: 0;
       padding: 0;
       height: 100%;
-    }
-
-    #my-video {
       width: 100%;
-      height: 100%;
-      object-fit: cover; /* Scale and fill the viewport */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: #000;
+      overflow: hidden;
+    }
+    #video {
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
     }
   </style>
 </head>
-
 <body>
-  <video
-    id="my-video"
-    class="video-js vjs-default-skin"
-    controls
-    preload="auto"
-    poster="MY_VIDEO_POSTER.jpg"
-    autoplay
-    muted
-    data-setup="{}"
-  >
-    <!-- Fallback sources for MP4/WebM -->
-    <source id="m3u8-source" src="" type="application/x-mpegURL" />
-    <source src="MY_VIDEO.mp4" type="video/mp4" />
-    <source src="MY_VIDEO.webm" type="video/webm" />
-    
-    <p class="vjs-no-js">
-      To view this video please enable JavaScript, and consider upgrading to a
-      web browser that
-      <a href="https://videojs.com/html5-video-support/" target="_blank">
-        supports HTML5 video
-      </a>
-    </p>
-  </video>
+
+  <video id="video" controls autoplay muted playsinline></video>
 
   <script>
-    // Function to get the URL parameter from the query string
-    function getURLParameter(name) {
-      var url = window.location.href;
-      var paramName = name + "=";
-      var startIndex = url.indexOf(paramName);
-      if (startIndex == -1) return null;
-      startIndex += paramName.length;
-      var endIndex = url.indexOf("&", startIndex);
-      if (endIndex == -1) endIndex = url.length;
-      return decodeURIComponent(url.substring(startIndex, endIndex));
+    function getUrlParameter(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
     }
 
-    // Get the M3U8 URL from the URL parameters
-    var m3u8URL = getURLParameter("stream");
+    const url = decodeURIComponent(getUrlParameter('url'));
+    const video = document.getElementById('video');
 
-    // Set the M3U8 URL if provided in the URL parameters
-    if (m3u8URL) {
-      var m3u8Source = document.getElementById('m3u8-source');
-      m3u8Source.src = m3u8URL;
+    // Ensure the video is muted and plays inline for autoplay compatibility
+    video.muted = true;
+    video.playsInline = true;
+
+    // Detect if the browser is iOS Safari
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+    if (isIOS && video.canPlayType('application/vnd.apple.mpegurl')) {
+      // For iOS Safari, set the src directly to use native HLS support
+      video.src = url;
+      video.addEventListener('loadedmetadata', function () {
+        video.play();
+      });
       
-      // Initialize Video.js player with HLS support
-      var player = videojs('my-video', {
-        techOrder: ['html5'], // Prefer HTML5 for video playback
-        autoplay: true,       // Enable autoplay
-        muted: true,          // Mute the video by default
-        sources: [
-          {
-            type: 'application/x-mpegURL',
-            src: m3u8URL // Use the dynamically fetched M3U8 URL
-          },
-          {
-            type: 'video/mp4',
-            src: 'MY_VIDEO.mp4' // Replace with your MP4 video URL
-          },
-          {
-            type: 'video/webm',
-            src: 'MY_VIDEO.webm' // Replace with your WebM video URL
-          }
-        ]
+      // Add a touchstart event in case autoplay fails and needs user interaction
+      video.addEventListener('touchstart', () => {
+        video.play();
       });
-
-      // Explicitly play video after the page has loaded
-      player.ready(function() {
-        // Attempt to play the video automatically
-        player.play().catch(function(error) {
-          // Handle the case where autoplay is blocked
-          console.log('Autoplay was blocked or failed:', error);
-        });
+    } else if (Hls.isSupported()) {
+      // For other browsers, use Hls.js
+      const hls = new Hls();
+      hls.loadSource(url);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        video.play();
       });
-
     } else {
-      alert("No 'stream' URL parameter provided.");
+      console.error("This browser does not support HLS playback.");
     }
   </script>
 </body>
+<noscript>
+  <div style="color: white; text-align: center; padding: 20px;">
+    This site requires JavaScript to play the video. Please enable JavaScript in your browser settings.
+  </div>
+</noscript>
+</html>
